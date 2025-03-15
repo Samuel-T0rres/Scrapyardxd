@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traductor de Perros</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.0/dist/speech-commands.min.js"></script>
+    <style>
+        body {
+            font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+        }
+        .container {
+            display: flex;
+            width: 50%;
+            margin: 50px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .left {
+            width: 20%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .right {
+            width: 80%;
+            text-align: left;
+            padding: 10px;
+            font-size: 18px;
+        }
+        button {
+            background: white;
+            border: none;
+            cursor: pointer;
+        }
+        button img {
+            width: 40px;
+            height: 40px;
+        }
+        #output {
+            min-height: 50px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Traductor de Perros a Humanos</h1>
+    <div class="container">
+        <div class="left">
+            <button onclick="init()">
+                <img src="https://cdn-icons-png.flaticon.com/512/786/786470.png" alt="Micrófono">
+            </button>
+        </div>
+        <div class="right">
+            <div id="output">Presiona el botón y habla...</div>
+        </div>
+    </div>
+
+    <script>
+        const URL = "https://teachablemachine.withgoogle.com/models/AoF4mTeS0/";
+        const dogTranslations = [
+            "¡Dame comida, humano!",
+            "Llévame al parque",
+            "Estoy feliz de verte ❤️",
+            "¡Ese gato me está mirando raro!",
+            "Hora de una siesta 😴",
+            "¡Tírame la pelota!",
+            "Dame una caricia en la panza 🐶"
+        ];
+
+        async function createModel() {
+            const checkpointURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+            const recognizer = speechCommands.create("BROWSER_FFT", undefined, checkpointURL, metadataURL);
+            await recognizer.ensureModelLoaded();
+            return recognizer;
+        }
+
+        async function init() {
+            const recognizer = await createModel();
+            recognizer.listen(result => {
+                const scores = result.scores;
+                let highestScore = 0;
+                let detectedClass = "";
+                
+                for (let i = 0; i < scores.length; i++) {
+                    if (scores[i] > highestScore) {
+                        highestScore = scores[i];
+                        detectedClass = recognizer.wordLabels()[i];
+                    }
+                }
+
+                const outputDiv = document.getElementById("output");
+
+                if (detectedClass === "Noise" || highestScore < 0.75) {
+                    outputDiv.innerHTML = "⚠️ Ruido detectado. Inténtalo de nuevo en un lugar más silencioso.";
+                } else if (detectedClass === "Dog") {
+                    const randomMessage = dogTranslations[Math.floor(Math.random() * dogTranslations.length)];
+                    outputDiv.innerHTML = "🐶 " + randomMessage;
+                } else {
+                    outputDiv.innerHTML = "No se detectó un ladrido.";
+                }
+
+            }, {
+                includeSpectrogram: true,
+                probabilityThreshold: 0.75,
+                invokeCallbackOnNoiseAndUnknown: true,
+                overlapFactor: 0.50
+            });
+
+            // Detener después de 5 segundos
+            setTimeout(() => recognizer.stopListening(), 5000);
+        }
+    </script>
+
+</body>
+</html>
